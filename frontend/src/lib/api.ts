@@ -14,6 +14,14 @@ export interface SummaryResponse {
   summary: string;
 }
 
+export interface TeamSummary {
+  teamName: string;
+  date: string;
+  avgConfidence: 'Low' | 'Medium' | 'High';
+  totalUpdates: number;
+  summary: string;
+}
+
 export async function submitUpdate(data: DailyUpdatePayload): Promise<{ success: boolean; message?: string }> {
   if (!SUBMIT_WEBHOOK_URL) {
     throw new Error('VITE_N8N_SUBMIT_WEBHOOK is not configured');
