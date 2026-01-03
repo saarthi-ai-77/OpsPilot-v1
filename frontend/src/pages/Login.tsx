@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { login } from '@/lib/auth';
+import { login, isAuthenticated } from '@/lib/auth';
 import { Layout } from '@/components/Layout';
-import { Zap, Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,6 +15,13 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate('/submit', { replace: true });
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,17 +44,22 @@ export default function Login() {
         title: 'Welcome back!',
         description: 'Successfully signed in.',
       });
-      navigate('/submit');
+      // Force full page reload to ensure route guards re-evaluate with fresh session
+      window.location.href = '/submit';
     } else {
       toast({
         title: 'Sign In Failed',
         description: result.error || 'Invalid credentials.',
         variant: 'destructive',
       });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
+
+  // Don't render if already authenticated (prevents flash)
+  if (isAuthenticated()) {
+    return null;
+  }
 
   return (
     <Layout>

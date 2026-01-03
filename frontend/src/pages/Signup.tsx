@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { signUpManager, signUpMember } from '@/lib/auth';
+import { signUpManager, signUpMember, isAuthenticated } from '@/lib/auth';
 import { Layout } from '@/components/Layout';
 import { Loader2, ArrowRight, Building2, Users2, ShieldCheck } from 'lucide-react';
 
@@ -25,6 +25,13 @@ export default function Signup() {
         teamId: ''
     });
 
+    // Redirect authenticated users away from signup page
+    useEffect(() => {
+        if (isAuthenticated()) {
+            navigate('/submit', { replace: true });
+        }
+    }, [navigate]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
@@ -40,7 +47,7 @@ export default function Signup() {
         const result = await signUpManager(formData.email, formData.password, formData.fullName, formData.teamName);
 
         if (result.success) {
-            toast({ title: 'Success!', description: 'Team created. Please login.' });
+            toast({ title: 'Success!', description: 'Team created. Please check your email to confirm, then login.' });
             navigate('/login');
         } else {
             toast({ title: 'Signup Failed', description: result.error || 'Could not create team.', variant: 'destructive' });
@@ -59,13 +66,18 @@ export default function Signup() {
         const result = await signUpMember(formData.email, formData.password, formData.fullName, formData.teamId);
 
         if (result.success) {
-            toast({ title: 'Success!', description: 'Joined team. Please login.' });
+            toast({ title: 'Success!', description: 'Joined team. Please check your email to confirm, then login.' });
             navigate('/login');
         } else {
             toast({ title: 'Signup Failed', description: result.error || 'Could not join team.', variant: 'destructive' });
         }
         setIsLoading(false);
     };
+
+    // Don't render if already authenticated (prevents flash)
+    if (isAuthenticated()) {
+        return null;
+    }
 
     return (
         <Layout>
