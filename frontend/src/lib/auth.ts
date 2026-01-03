@@ -10,6 +10,17 @@ export interface UserSession {
 
 const SESSION_KEY = 'opspilot_session';
 
+// User-friendly error messages
+const friendlyErrors: Record<string, string> = {
+  'Invalid login credentials': 'Incorrect email or password. Please try again.',
+  'Email not confirmed': 'Please check your email and confirm your account first.',
+  'User already registered': 'An account with this email already exists. Try logging in.',
+};
+
+function getFriendlyError(error: string): string {
+  return friendlyErrors[error] || 'Something went wrong. Please try again later.';
+}
+
 export async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -18,21 +29,22 @@ export async function login(email: string, password: string): Promise<{ success:
     });
 
     if (authError) {
-      return { success: false, error: authError.message };
+      return { success: false, error: getFriendlyError(authError.message) };
     }
 
     if (!authData.user) {
-      return { success: false, error: 'User not found' };
+      return { success: false, error: 'Unable to sign in. Please try again.' };
     }
 
     const { data: member, error: memberError } = await supabase
       .from('members')
       .select('id, team_id, role, name')
-      .eq('user_id', authData.user.id)
+      .eq('email', email)
       .single();
 
     if (memberError || !member) {
-      return { success: false, error: 'User record not found in members table.' };
+      console.error('Member lookup error:', memberError);
+      return { success: false, error: 'Account not found. Please sign up first.' };
     }
 
     const session: UserSession = {
@@ -47,7 +59,7 @@ export async function login(email: string, password: string): Promise<{ success:
     return { success: true };
   } catch (err) {
     console.error('Login error:', err);
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: 'Something went wrong. Please try again later.' };
   }
 }
 
@@ -64,8 +76,13 @@ export async function signUpManager(
       password,
     });
 
-    if (authError) return { success: false, error: authError.message };
-    if (!authData.user) return { success: false, error: 'Failed to create user' };
+    if (authError) {
+      console.error('Auth signup error:', authError);
+      return { success: false, error: getFriendlyError(authError.message) };
+    }
+    if (!authData.user) {
+      return { success: false, error: 'Unable to create account. Please try again.' };
+    }
 
     // 2. Create Team
     const { data: team, error: teamError } = await supabase
@@ -74,25 +91,30 @@ export async function signUpManager(
       .select('id')
       .single();
 
-    if (teamError) return { success: false, error: 'Failed to create team: ' + teamError.message };
+    if (teamError) {
+      console.error('Team creation error:', teamError);
+      return { success: false, error: 'Unable to create team. Please try again.' };
+    }
 
-    // 3. Create Member
+    // 3. Create Member (using email as the unique identifier)
     const { error: memberError } = await supabase
       .from('members')
       .insert({
-        user_id: authData.user.id,
         team_id: team.id,
         email,
         name,
         role: 'manager'
       });
 
-    if (memberError) return { success: false, error: 'Failed to create member record: ' + memberError.message };
+    if (memberError) {
+      console.error('Member creation error:', memberError);
+      return { success: false, error: 'Unable to complete registration. Please try again.' };
+    }
 
     return { success: true };
   } catch (err) {
     console.error('Signup error:', err);
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: 'Something went wrong. Please try again later.' };
   }
 }
 
@@ -120,26 +142,33 @@ export async function signUpMember(
       password,
     });
 
-    if (authError) return { success: false, error: authError.message };
-    if (!authData.user) return { success: false, error: 'Failed to create user' };
+    if (authError) {
+      console.error('Auth signup error:', authError);
+      return { success: false, error: getFriendlyError(authError.message) };
+    }
+    if (!authData.user) {
+      return { success: false, error: 'Unable to create account. Please try again.' };
+    }
 
-    // 3. Create Member
+    // 3. Create Member (using email as the unique identifier)
     const { error: memberError } = await supabase
       .from('members')
       .insert({
-        user_id: authData.user.id,
         team_id: teamId,
         email,
         name,
         role: 'member'
       });
 
-    if (memberError) return { success: false, error: 'Failed to create member record: ' + memberError.message };
+    if (memberError) {
+      console.error('Member creation error:', memberError);
+      return { success: false, error: 'Unable to complete registration. Please try again.' };
+    }
 
     return { success: true };
   } catch (err) {
     console.error('Signup error:', err);
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: 'Something went wrong. Please try again later.' };
   }
 }
 
