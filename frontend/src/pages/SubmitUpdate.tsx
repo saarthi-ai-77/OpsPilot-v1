@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,11 +14,14 @@ export default function SubmitUpdate() {
   const [submitted, setSubmitted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const session = getSession();
 
+  // Memoize session to prevent unnecessary re-renders
+  const session = useMemo(() => getSession(), []);
+
+  // Auth guard - runs once on mount
   useEffect(() => {
     if (!isAuthenticated()) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   }, [navigate]);
 
@@ -54,6 +57,7 @@ export default function SubmitUpdate() {
         });
       }
     } catch (error) {
+      console.error('Submit error:', error);
       toast({
         title: 'Network Error',
         description: 'Could not connect to the server. Please try again.',
@@ -64,7 +68,10 @@ export default function SubmitUpdate() {
     }
   };
 
-  if (!session) return null;
+  // Early return if not authenticated
+  if (!session) {
+    return null;
+  }
 
   return (
     <Layout>
@@ -73,7 +80,7 @@ export default function SubmitUpdate() {
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
             Daily Standup
           </h1>
-          <p className="text-slate-500 mt-3 text-lg">
+          <p className="text-slate-500 dark:text-slate-400 mt-3 text-lg">
             Keep your team in the loop. Tell us what's happening.
           </p>
         </div>
@@ -93,7 +100,7 @@ export default function SubmitUpdate() {
                 <Send className="w-5 h-5 text-blue-600" />
                 <CardTitle className="text-xl">What's your status today?</CardTitle>
               </div>
-              <CardDescription className="text-slate-500">
+              <CardDescription className="text-slate-500 dark:text-slate-400">
                 Briefly share your progress and any hurdles you're facing.
               </CardDescription>
             </CardHeader>
