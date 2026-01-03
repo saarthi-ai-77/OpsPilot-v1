@@ -70,7 +70,7 @@ export async function signUpManager(
     // 2. Create Team
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .insert({ name: teamName, manager_name: name })
+      .insert({ name: teamName, manager_name: name, manager_email: email })
       .select('id')
       .single();
 
